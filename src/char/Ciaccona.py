@@ -52,9 +52,6 @@ class Ciaccona(BaseChar):
                     self.task.next_frame()
             self.heavy_click_forte(check_fun=self.is_mouse_forte_full)
             wait = True
-        if not self.in_liberation and self.current_echo() > 0.25:
-            self.click_echo()
-
         if self.liberation_available():
             if wait:
                 self.sleep(0.4)
@@ -62,9 +59,8 @@ class Ciaccona(BaseChar):
                 self.in_liberation = True
                 if self.attribute == 2:
                     self.continues_click_a(0.6)
-                if self.attribute == 3:
-                    return self.switch_next_char(free_intro=True)
-        
+        if not self.in_liberation and self.current_echo() > 0.25:
+            self.click_echo()
         self.switch_next_char()
 
     def get_switch_priority(self, current_char=None, has_intro=False, target_low_con=False):

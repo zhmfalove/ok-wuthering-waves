@@ -196,7 +196,6 @@ class BaseCombatTask(CombatCheck):
 
     def revive_at_tower_and_heal(self):
         """Use the weekly entrance as a stable anchor, then teleport to heal."""
-        self.go_to_tower()
         self.teleport_to_heal()
 
     def teleport_to_heal(self):
