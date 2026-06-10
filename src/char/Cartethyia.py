@@ -48,22 +48,37 @@ class Cartethyia(BaseChar):
                 self.sleep(0.2, False)
             self.logger.debug(f'on_combat_end {self.index} switch end')
 
+    def has_teammate_buff(self):
+        """检查队友（副C或辅助）是否提供了持续中的Buff。"""
+        for char in self.task.chars:
+            if char and char != self and char.has_buff():
+                return True
+        return False
+
     def get_switch_priority(self, current_char=None, has_intro=False, target_low_con=False):
-        if not self.is_cartethyia:
-            return SwitchPriority.MUST
         return super().get_switch_priority(current_char, has_intro, target_low_con)
+
+    def switch_next_char(self, *args, **kwargs):
+        """控制卡提希娅切出逻辑：大形态或有Buff且能量不满时禁止切出。"""
+        if not self.is_small():
+            self.logger.info('Fleurdelys form, skip switch out')
+            return
+        if self.has_teammate_buff() and not self.is_con_full():
+            self.logger.info('Has teammate buff and con not full, skip switch out')
+            return
+        return super().switch_next_char(*args, **kwargs)
 
     def do_perform(self):
         self.transform = False
         if self.has_intro:
             self.continues_normal_attack(1.2)
-        else:
-            self.click_echo(time_out=0)
+        
+        self.click_echo(time_out=0) # 确保入场或常规状态下都能尝试释放声骸
         if self.is_small():
             self.logger.info(f'is cartethyia')
             self.wait_down()
-            if self.acquire_missing_buffs():
-                return self.switch_next_char()
+            # 不再在获取Buff后立即切人，而是尝试完成变身
+            self.acquire_missing_buffs()
             self.check_combat()
             self.try_mid_air_attack()
             self.check_combat()
@@ -83,6 +98,7 @@ class Cartethyia(BaseChar):
             while time.time() - start < time_out:
                 if self.try_lib_big():
                     return self.switch_next_char()
+                self.click_echo(time_out=0) # 大形态循环中持续尝试释放声骸
                 self.click_with_interval()
                 self.check_combat()
                 self.task.next_frame()
@@ -168,6 +184,7 @@ class Cartethyia(BaseChar):
             start = time.time()
             while True:
                 self.task.jump(after_sleep=0.1)
+                self.click_echo(time_out=0) # 跳起后尝试释放声骸
                 self.task.click(after_sleep=0.1)
                 if not self.is_mid_air_attack_available():
                     self.sleep(0.4)
@@ -179,6 +196,7 @@ class Cartethyia(BaseChar):
             start = time.time()
             while time.time() - start < 0.8:
                 self.task.jump(after_sleep=0.1)
+                self.click_echo(time_out=0) # 跳起后尝试释放声骸
                 self.task.click(after_sleep=0.1)
         self.try_mid_air_attack_once = False
 

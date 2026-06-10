@@ -25,6 +25,8 @@ class Iuno(BaseChar):
     def do_perform(self):
         self.wait_down()
         self.do_everything()
+        if self.liberation_available():
+            self.click_liberation()
         self.switch_next_char()
 
     def do_everything(self, time_out=1.5):

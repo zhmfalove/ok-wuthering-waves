@@ -51,6 +51,7 @@ class Augusta(BaseChar):
                         return self.switch_next_char()
             if self.liberation_available():
                 self.logger.debug('Augusta performs single liberation')
+                self.click_echo(time_out=0)
                 if self.task.wait_until(lambda: not self.liberation_available(), post_action=self.send_liberation_key,
                                         time_out=2):
                     self.record_liberation_use()
