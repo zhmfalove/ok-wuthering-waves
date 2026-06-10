@@ -177,7 +177,7 @@ class Aemeath(BaseChar):
         self.logger.info('Aemeath [post-lib2 combo] starting: 3 Normal Attacks -> Resonance (E)')
         
         # 1. 执行 3 次普攻
-        for i in range(3):
+        for _ in range(3):
             self.check_combat()  # 每次攻击前检查战斗状态，防止超时或脱战导致的死循环
             self.normal_attack()
             self.sleep(0.25)      # 普攻间隔，可根据 Aemeath 实际动作帧长微调
