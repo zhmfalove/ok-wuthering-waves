@@ -10,7 +10,9 @@ from ok import color_range_to_bound
 from ok import safe_get
 from src import text_white_color
 from src.char import BaseChar
-from src.char.BaseChar import SwitchPriority, dot_color  # noqa
+from src.char.BaseChar import SwitchPriority, dot_color, CharType  # noqa
+from src.char.HavocRover import HavocRover
+from src.char.Cartethyia import Cartethyia
 from src.char.CharFactory import get_char_by_pos
 from src.combat.CombatCheck import CombatCheck
 from src.task.BaseWWTask import isolate_white_text_to_black, binarize_for_matching
@@ -33,7 +35,6 @@ class CharRevivedException(CharDeadException):
     """角色已复活，用于中断当前战斗上下文并让任务重新进入。"""
     pass
 
-
 mismatched_names = {
     "Douling": "Buling",
     "Xigelika": "Sigrika",
@@ -43,7 +44,6 @@ mismatched_names = {
     "ShoreKeeper": "Shorekeeper",
     "HavocRover": "Rover: Havoc"
 }
-
 
 class BaseCombatTask(CombatCheck):
     """基础战斗任务类，封装了游戏"鸣潮"中角色自动化操作的通用逻辑。"""
@@ -72,6 +72,7 @@ class BaseCombatTask(CombatCheck):
         self.char_texts = ['char_1_text', 'char_2_text', 'char_3_text']  # 角色文本标识符列表
         self.mouse_pos = None  # 当前鼠标位置
         self.combat_start = 0  # 战斗开始时间戳
+        self.combat_start_action_done = False
 
         self.char_texts = ['char_1_text', 'char_2_text', 'char_3_text']
         self.add_text_fix({'Ｅ': 'e'})
@@ -321,6 +322,45 @@ class BaseCombatTask(CombatCheck):
             current = 0
         return current
 
+    def do_reset_to_false(self):
+        self.combat_start_action_done = False
+        return super().do_reset_to_false()
+
+    def do_check_in_combat(self, target):
+        res = super().do_check_in_combat(target)
+        if self._in_combat and not self.combat_start_action_done:
+            self.perform_combat_start_action()
+        return res
+    
+    # 主C 3A 接E起手开始循环
+    def perform_combat_start_action(self):
+        current_char = self.get_current_char()
+        if not current_char:
+            return
+        
+        self.combat_start_action_done = True
+
+        if not current_char.is_main_dps:
+            return
+
+        healer = None
+        for char in self.chars:
+            if char and char.is_healer and not self.has_cd('liberation', char.index):
+                healer = char
+                break
+
+        if healer:
+            logger.info(f'战斗开始动作: {current_char} 普攻3次 + 共鸣 -> 切换辅助 {healer}')
+            current_char.click_echo(time_out=0)
+  
+            for _ in range(3):
+                 current_char.normal_attack()
+                 self.sleep(0.25)
+
+            current_char.send_resonance_key(post_sleep=0.1)
+            self.sleep(0.15)
+            self.switch_next_char(current_char, free_intro=True)
+
     def combat_once(self, wait_combat_time=200, raise_if_not_found=True):
         """执行一次完整的战斗流程。
 
@@ -417,7 +457,7 @@ class BaseCombatTask(CombatCheck):
         unbuffed_non_main = [
             char for char in candidates
             if not char.is_main_dps and char.buff_time > 0
-               and not char.has_buff()
+            and not char.has_buff()
         ]
         return self._oldest_switch_target(unbuffed_non_main)
 
@@ -463,7 +503,7 @@ class BaseCombatTask(CombatCheck):
         no_targets = []
         for char in candidates:
             switch_priority = char.get_switch_priority(current_char=current_char, has_intro=has_intro,
-                                                       target_low_con=target_low_con)
+                                                        target_low_con=target_low_con)
             logger.debug(f'switch_next_char hook: {char} priority {switch_priority}')
             if switch_priority == SwitchPriority.MUST:
                 must_targets.append(char)
@@ -758,6 +798,11 @@ class BaseCombatTask(CombatCheck):
                     char.is_current_char = False
         self.combat_start = time.time()
         if len(self.chars) >= 2:
+            rover = self.has_char(HavocRover)
+            cartethyia = self.has_char(Cartethyia)
+            if rover and cartethyia:
+                rover.set_char_type(CharType.HEALER)
+                self.log_info(f'Detected Rover and Cartethyia, set Rover as HEALER')
             translated_names = []
             for c in self.chars:
                 if c is not None:
