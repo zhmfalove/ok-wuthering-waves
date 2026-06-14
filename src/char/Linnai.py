@@ -36,9 +36,6 @@ class Linnai(BaseChar):
             elif not self.is_con_full() and self.click_liberation():
                 self.continues_normal_attack(0.5)
             self.click_resonance()
-        
-        if self.liberation_available():
-            self.click_liberation()
         return self.switch_next_char()
             
     def perform_under_intro(self):
